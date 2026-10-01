@@ -6,7 +6,7 @@
 
 backend:
   name: github
-  repo: ten-github-cua-ban/ten-repo          # ĐỔI: tài-khoản-github/tên-repo
+  repo: Drakie14/Nhi_Portfolio          # ĐỔI: tài-khoản-github/tên-repo
   branch: main
   base_url: https://sveltia-cms-auth.ten-cua-ban.workers.dev   # ĐỔI: URL Worker đăng nhập
   commit_messages:
