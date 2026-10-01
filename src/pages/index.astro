@@ -1,0 +1,85 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import Featured, { type FeaturedItem } from '../components/Featured.astro';
+import Works from '../components/Works.astro';
+import Projects from '../components/Projects.astro';
+import Journey from '../components/Journey.astro';
+import About from '../components/About.astro';
+import Contact from '../components/Contact.astro';
+import { getSettings, getWorks, getProjects, getJourney, countSemesters } from '../lib/data';
+
+const settings = (await getSettings()).data;
+const works = await getWorks();
+const projects = await getProjects();
+const journey = await getJourney();
+
+// Dải nổi bật: 3–6 mục đánh dấu "Nổi bật"; nếu chưa đủ 3 thì lấy thêm tác phẩm mới
+const featured: FeaturedItem[] = [
+  ...works
+    .filter((w) => w.data.featured)
+    .map((w) => ({
+      key: w.id,
+      href: `/tac-pham/${w.id}/`,
+      title: w.data.title,
+      meta: [w.data.medium, w.data.size].filter(Boolean).join(' · ') || w.data.category,
+      image: w.data.image,
+      kind: 'Tác phẩm' as const,
+      order: w.data.order,
+    })),
+  ...projects
+    .filter((p) => p.data.featured)
+    .map((p) => ({
+      key: p.id,
+      href: `/do-an/${p.id}/`,
+      title: p.data.title,
+      meta: p.data.subject ?? p.data.semester ?? '',
+      image: p.data.cover,
+      kind: 'Đồ án' as const,
+      order: p.data.order,
+    })),
+]
+  .sort((a, b) => a.order - b.order)
+  .slice(0, 6);
+
+for (const w of works) {
+  if (featured.length >= 3) break;
+  if (featured.some((f) => f.key === w.id)) continue;
+  featured.push({
+    key: w.id,
+    href: `/tac-pham/${w.id}/`,
+    title: w.data.title,
+    meta: w.data.medium ?? w.data.category,
+    image: w.data.image,
+    kind: 'Tác phẩm',
+  });
+}
+
+const semesters = countSemesters([
+  ...works.map((w) => w.data.semester),
+  ...projects.map((p) => p.data.semester),
+  ...journey.map((j) => j.data.semester),
+]);
+const currentSemester = journey.find((j) => j.data.semester)?.data.semester;
+
+const stats = [
+  { n: works.length, label: 'Tác phẩm' },
+  { n: projects.length, label: 'Đồ án' },
+  { n: semesters, label: 'Học kỳ' },
+];
+---
+<Base>
+  <Hero
+    name={settings.name}
+    tagline={settings.tagline}
+    school="ĐH Kiến trúc TP.HCM"
+    schoolYear={settings.schoolYear}
+    semester={currentSemester}
+  />
+  <Featured items={featured} />
+  <Works works={works} />
+  <Projects projects={projects} />
+  <Journey entries={journey} works={works} projects={projects} />
+  <About stats={stats} />
+  <Contact />
+</Base>

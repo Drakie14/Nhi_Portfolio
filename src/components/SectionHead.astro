@@ -1,0 +1,57 @@
+---
+// Tiêu đề phần kiểu "01 — Tác phẩm"
+interface Props {
+  num: string;
+  title: string;
+  id: string;
+  note?: string;
+}
+const { num, title, id, note } = Astro.props;
+---
+<header class="sh">
+  <h2 id={`${id}-tieu-de`}>
+    <span class="sh-num label">{num} —</span>
+    <span class="sh-title">{title}</span>
+  </h2>
+  {note && <p class="sh-note label">{note}</p>}
+  <slot />
+</header>
+
+<style>
+  .sh {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px 32px;
+    padding-bottom: clamp(20px, 3vw, 32px);
+    margin-bottom: clamp(32px, 5vw, 56px);
+    border-bottom: 1px solid var(--line);
+  }
+  /* vạch đánh dấu ở đầu đường kẻ, như dấu mặt cắt */
+  .sh::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 1px;
+    height: 11px;
+    background: var(--accent);
+  }
+  h2 {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .sh-num {
+    color: var(--accent);
+  }
+  .sh-title {
+    font-size: var(--fs-h2);
+    line-height: 1.05;
+  }
+  .sh-note {
+    margin: 0;
+  }
+</style>

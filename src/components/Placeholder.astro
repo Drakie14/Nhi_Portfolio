@@ -1,0 +1,46 @@
+---
+// Khung chờ ảnh: viền mảnh, hai đường chéo (ký hiệu "ô trống" trên bản vẽ)
+interface Props {
+  ratio?: string;
+  text?: string;
+  class?: string;
+  /** Chỉ để trang trí (ví dụ thumbnail nhỏ) — trình đọc màn hình bỏ qua */
+  decorative?: boolean;
+}
+const { ratio = '4/5', text = 'Tác phẩm sắp ra mắt', class: cls, decorative = false } = Astro.props;
+const a11y = decorative ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': text };
+---
+<div class:list={['ph', cls]} style={`aspect-ratio:${ratio}`} {...a11y}>
+  <svg class="ph-x" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 100">
+    <line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" />
+    <line x1="100" y1="0" x2="0" y2="100" vector-effect="non-scaling-stroke" />
+  </svg>
+  {!decorative && <span class="ph-text label" aria-hidden="true">{text}</span>}
+</div>
+
+<style>
+  .ph {
+    position: relative;
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  .ph-x {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .ph-text {
+    position: relative;
+    padding: 6px 12px;
+    background: var(--surface);
+    color: var(--muted);
+    text-align: center;
+  }
+</style>

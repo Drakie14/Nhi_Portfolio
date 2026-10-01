@@ -1,0 +1,40 @@
+---
+interface Props {
+  name: string;
+}
+const { name } = Astro.props;
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <p class="label">© <span data-year>{year}</span> {name}</p>
+    <p class="label">Made in Sài Gòn</p>
+    <a class="admin label" href="/admin/" rel="nofollow">✎ Chế độ kiến trúc sư</a>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: clamp(80px, 12vw, 160px);
+    border-top: 1px solid var(--line);
+  }
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding-block: 28px;
+  }
+  .footer p {
+    margin: 0;
+  }
+  .admin {
+    text-decoration: none;
+    padding-block: 10px;
+    transition: color 0.2s;
+  }
+  .admin:hover {
+    color: var(--text);
+  }
+</style>

@@ -1,0 +1,264 @@
+---
+import Media from './Media.astro';
+import { fig } from '../lib/data';
+import { resolveImage, ratioOf } from '../lib/images';
+
+export interface FeaturedItem {
+  key: string;
+  href: string;
+  title: string;
+  meta: string;
+  image?: string;
+  kind: 'Tác phẩm' | 'Đồ án';
+}
+
+interface Props {
+  items: FeaturedItem[];
+}
+const { items } = Astro.props;
+---
+{
+  items.length > 0 && (
+    <section class="featured" id="noi-bat" aria-labelledby="noi-bat-tieu-de">
+      <div class="wrap f-head">
+        <h2 id="noi-bat-tieu-de" class="label">Nổi bật</h2>
+        <p class="label f-hint">Cuộn, kéo hoặc vuốt ngang</p>
+      </div>
+
+      <div class="strip" tabindex="0" role="region" aria-label="Tác phẩm và đồ án nổi bật" data-strip>
+        <ol class="strip-track">
+          {items.map((it, i) => {
+            const ratio = ratioOf(resolveImage(it.image), it.key);
+            return (
+              <li class="f-item">
+                <a href={it.href} class="f-link" draggable="false">
+                  <div class="f-media" style={`aspect-ratio:${ratio}`}>
+                    <Media
+                      src={it.image}
+                      alt={it.title}
+                      key={it.key}
+                      ratio={ratio}
+                      cover
+                      sizes="(min-width: 700px) 70vw, 86vw"
+                      widths={[768, 1080, 1440, 1920]}
+                      eager={i === 0}
+                    />
+                  </div>
+                  <div class="f-cap">
+                    <span class="label fig">{fig(i + 1)}</span>
+                    <span class="f-title">{it.title}</span>
+                    <span class="label">{it.kind} · {it.meta}</span>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
+      <div class="wrap">
+        <div class="f-progress" aria-hidden="true"><span data-strip-progress></span></div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .featured {
+    padding-top: clamp(56px, 8vw, 96px);
+  }
+  .f-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .f-head h2 {
+    font-family: var(--mono);
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    color: var(--text);
+  }
+  .f-hint {
+    margin: 0;
+  }
+
+  .strip {
+    --h: min(64svh, 720px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Bám điểm dừng chỉ khi vuốt bằng tay; với chuột thì cuộn mượt tự do */
+  @media (hover: none) {
+    .strip {
+      scroll-snap-type: x proximity;
+    }
+  }
+  .strip::-webkit-scrollbar {
+    display: none;
+  }
+  .strip:focus-visible {
+    outline-offset: -2px;
+  }
+  .strip.is-dragging {
+    scroll-snap-type: none;
+    user-select: none;
+  }
+  .strip.is-dragging .f-link {
+    pointer-events: none;
+  }
+
+  .strip-track {
+    display: flex;
+    gap: clamp(16px, 2.4vw, 40px);
+    width: max-content;
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--gutter);
+  }
+
+  .f-item {
+    scroll-snap-align: start;
+  }
+  .f-link {
+    display: block;
+    text-decoration: none;
+  }
+  .f-media {
+    height: var(--h);
+    max-width: 86vw;
+    overflow: hidden;
+  }
+  .f-media > :global(*) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto !important;
+  }
+  .f-media :global(img) {
+    filter: brightness(0.9);
+    transition: filter 0.4s;
+  }
+  .f-link:hover .f-media :global(img) {
+    filter: none;
+  }
+
+  .f-cap {
+    /* chú thích không được làm rộng khung ảnh */
+    width: 0;
+    min-width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 16px;
+    padding-top: 14px;
+  }
+  .f-title {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+  .f-link:hover .f-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+
+  .f-progress {
+    position: relative;
+    height: 1px;
+    margin-top: 32px;
+    background: var(--line);
+  }
+  .f-progress span {
+    position: absolute;
+    inset: 0;
+    background: var(--text);
+    transform-origin: 0 50%;
+    transform: scaleX(var(--p, 0.2));
+  }
+
+  @media (max-width: 640px) {
+    .strip {
+      --h: 58svh;
+    }
+  }
+</style>
+
+<script>
+  const strip = document.querySelector<HTMLElement>('[data-strip]');
+  const progress = document.querySelector<HTMLElement>('[data-strip-progress]');
+
+  if (strip) {
+    const max = () => strip.scrollWidth - strip.clientWidth;
+
+    const update = () => {
+      const m = max();
+      const visible = strip.clientWidth / strip.scrollWidth;
+      const p = m > 0 ? visible + (1 - visible) * (strip.scrollLeft / m) : 1;
+      progress?.style.setProperty('--p', p.toFixed(4));
+    };
+    update();
+    strip.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    // Lăn chuột dọc → cuộn ngang; tới mép thì trả lại cuộn trang
+    strip.addEventListener(
+      'wheel',
+      (e) => {
+        if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+        const m = max();
+        const atStart = strip.scrollLeft <= 0 && e.deltaY < 0;
+        const atEnd = strip.scrollLeft >= m - 1 && e.deltaY > 0;
+        if (m <= 0 || atStart || atEnd) return;
+        e.preventDefault();
+        const step = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY;
+        strip.scrollLeft += step;
+      },
+      { passive: false },
+    );
+
+    // Kéo bằng chuột (cảm ứng dùng vuốt gốc của trình duyệt)
+    let startX = 0;
+    let startLeft = 0;
+    let moved = false;
+    let down = false;
+
+    strip.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      down = true;
+      moved = false;
+      startX = e.clientX;
+      startLeft = strip.scrollLeft;
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) > 5) {
+        moved = true;
+        strip.classList.add('is-dragging');
+      }
+      if (moved) strip.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener('pointerup', () => {
+      if (!down) return;
+      down = false;
+      strip.classList.remove('is-dragging');
+    });
+    // Không mở link nếu vừa kéo
+    strip.addEventListener(
+      'click',
+      (e) => {
+        if (moved) {
+          e.preventDefault();
+          e.stopPropagation();
+          moved = false;
+        }
+      },
+      true,
+    );
+  }
+</script>

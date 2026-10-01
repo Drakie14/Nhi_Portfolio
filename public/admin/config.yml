@@ -1,0 +1,224 @@
+# yaml-language-server: $schema=https://unpkg.com/@sveltia/cms/schema/sveltia-cms.json
+# ==========================================================================
+#  CẤU HÌNH "CHẾ ĐỘ KIẾN TRÚC SƯ" (Sveltia CMS)
+#  Chỉ cần sửa 3 dòng có chữ "ĐỔI" bên dưới. KHÔNG đặt token/secret ở đây.
+# ==========================================================================
+
+backend:
+  name: github
+  repo: ten-github-cua-ban/ten-repo          # ĐỔI: tài-khoản-github/tên-repo
+  branch: main
+  base_url: https://sveltia-cms-auth.ten-cua-ban.workers.dev   # ĐỔI: URL Worker đăng nhập
+  commit_messages:
+    create: 'Thêm {{collection}} “{{slug}}”'
+    update: 'Cập nhật {{collection}} “{{slug}}”'
+    delete: 'Xoá {{collection}} “{{slug}}”'
+    uploadMedia: 'Tải ảnh “{{path}}”'
+    deleteMedia: 'Xoá ảnh “{{path}}”'
+
+app_title: Chế độ kiến trúc sư
+site_url: https://ten-du-an.pages.dev          # ĐỔI: địa chỉ website của bạn
+display_url: https://ten-du-an.pages.dev
+
+# Ảnh được lưu thẳng vào repo, trong thư mục mà Astro tự nén & tạo srcset khi build
+media_folder: src/assets/uploads
+public_folder: /src/assets/uploads
+
+media_libraries:
+  default:
+    config:
+      max_file_size: 15000000        # 15MB trước khi nén
+      slugify_filename: true         # đổi tên file thành không dấu, không khoảng trắng
+      transformations:
+        raster_image:                # JPG/PNG/HEIC… → WebP, tối đa 2400px
+          format: webp
+          quality: 82
+          width: 2400
+          height: 2400
+
+# Tên file không dấu: "Đồ án đầu tiên" → do-an-dau-tien
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: '-'
+
+output:
+  omit_empty_optional_fields: true
+
+collections:
+  # ------------------------------------------------------------------------
+  - name: works
+    label: Tác phẩm
+    label_singular: tác phẩm
+    description: Tranh, ký hoạ, bản vẽ, mô hình… Mỗi mục là một tác phẩm.
+    icon: palette
+    folder: src/content/works
+    create: true
+    delete: true
+    slug: '{{title}}'
+    extension: md
+    format: frontmatter
+    summary: '{{title}} — {{category}} ({{date | date(''YYYY'')}})'
+    sortable_fields: [order, date, title, category]
+    view_filters:
+      - { label: Nổi bật, field: featured, pattern: true }
+    view_groups:
+      - { label: Danh mục, field: category }
+    fields:
+      - { name: title, label: Tiêu đề, widget: string, hint: 'Ví dụ: Ký hoạ chợ Bến Thành buổi sáng' }
+      - name: image
+        label: Ảnh chính
+        widget: image
+        required: false
+        choose_url: false
+        hint: Ảnh JPG/PNG sẽ tự chuyển sang WebP. Bỏ trống thì web hiện khung “Tác phẩm sắp ra mắt”.
+      - name: gallery
+        label: Bộ ảnh phụ
+        widget: image
+        multiple: true
+        required: false
+        choose_url: false
+        hint: Chọn một hoặc nhiều ảnh (chi tiết, góc khác…). Hiện ở trang chi tiết tác phẩm.
+      - name: date
+        label: Ngày hoàn thành
+        widget: datetime
+        type: date
+        format: YYYY-MM-DD
+        default: '{{now}}'
+      - name: category
+        label: Danh mục
+        widget: select
+        options: [Ký hoạ, Màu nước, Chì & Mực, Bản vẽ kỹ thuật, Mô hình, Kỹ thuật số, Khác]
+        default: Ký hoạ
+      - { name: medium, label: Chất liệu, widget: string, required: false, hint: 'Ví dụ: Màu nước trên giấy Canson 300gsm' }
+      - { name: size, label: Kích thước, widget: string, required: false, hint: 'Ví dụ: A3 hoặc 30×40cm' }
+      - &semester
+        name: semester
+        label: Học kỳ
+        widget: select
+        required: false
+        options:
+          [Trước nhập học, HK1 – Năm 1, HK2 – Năm 1, HK1 – Năm 2, HK2 – Năm 2, HK1 – Năm 3, HK2 – Năm 3, HK1 – Năm 4, HK2 – Năm 4, HK1 – Năm 5, HK2 – Năm 5, Sau tốt nghiệp]
+        hint: Học kỳ bạn làm tác phẩm này.
+      - { name: description, label: Mô tả ngắn, widget: text, required: false, hint: '1–2 câu. Cũng được dùng làm mô tả ảnh (alt) cho người khiếm thị.' }
+      - { name: featured, label: Nổi bật, widget: boolean, default: false, hint: 'Bật để đưa lên dải “Nổi bật” ở trang chủ (nên chọn 3–6 mục).' }
+      - { name: order, label: Thứ tự hiển thị, widget: number, value_type: int, default: 100, hint: 'Số nhỏ hiện trước. Cùng số thì tác phẩm mới hơn hiện trước.' }
+
+  # ------------------------------------------------------------------------
+  - name: projects
+    label: Đồ án
+    label_singular: đồ án
+    description: Dự án nhiều bước, nhiều ảnh, có trang riêng kiểu tạp chí.
+    icon: architecture
+    folder: src/content/projects
+    create: true
+    delete: true
+    slug: '{{title}}'
+    extension: md
+    format: frontmatter
+    summary: '{{title}} — {{subject}}'
+    sortable_fields: [order, date, title]
+    fields:
+      - { name: title, label: Tên đồ án, widget: string, hint: 'Ví dụ: Khối và mặt — bài bố cục đầu tiên' }
+      - { name: subject, label: Môn học, widget: string, required: false, hint: 'Ví dụ: Cơ sở tạo hình 1' }
+      - *semester
+      - { name: date, label: Ngày hoàn thành, widget: datetime, type: date, format: YYYY-MM-DD, required: false }
+      - { name: cover, label: Ảnh bìa, widget: image, required: false, choose_url: false, hint: 'Nên dùng ảnh ngang. Hiện toàn màn hình ở đầu trang đồ án.' }
+      - { name: summary, label: Tóm tắt một câu, widget: text, required: false, hint: 'Hiện trên thẻ đồ án và dưới tiêu đề.' }
+      - { name: featured, label: Nổi bật, widget: boolean, default: false, hint: 'Bật để đưa lên dải “Nổi bật” ở trang chủ.' }
+      - { name: order, label: Thứ tự hiển thị, widget: number, value_type: int, default: 100, hint: 'Số nhỏ hiện trước. Đồ án đầu tiên được hiện thẻ lớn.' }
+      - { name: brief, label: Đề bài / Bối cảnh, widget: markdown, required: false, editor_components: [], hint: 'Đề bài yêu cầu gì? Bối cảnh khu đất, môn học.' }
+      - { name: concept, label: Ý tưởng, widget: markdown, required: false, editor_components: [], hint: 'Ý tưởng chính và cảm hứng của bạn.' }
+      - name: process
+        label: Quá trình
+        label_singular: bước
+        widget: list
+        required: false
+        hint: Mỗi bước gồm một ảnh và một chú thích. Kéo để đổi thứ tự.
+        summary: '{{fields.caption}}'
+        fields:
+          - { name: image, label: Ảnh, widget: image, required: false, choose_url: false }
+          - { name: caption, label: Chú thích, widget: text, required: false, hint: 'Bước này bạn đã làm gì?' }
+      - name: results
+        label: Kết quả (gallery)
+        label_singular: ảnh
+        widget: list
+        required: false
+        summary: '{{fields.caption}}'
+        fields:
+          - { name: image, label: Ảnh, widget: image, required: false, choose_url: false }
+          - { name: caption, label: Chú thích, widget: string, required: false }
+      - { name: learned, label: Điều tôi học được, widget: markdown, required: false, editor_components: [], hint: 'Bài học rút ra sau đồ án.' }
+      - name: teacher
+        label: Nhận xét của giảng viên
+        widget: object
+        required: false
+        collapsed: true
+        hint: Tuỳ chọn. Tắt “Hiện trên web” để ẩn.
+        fields:
+          - { name: show, label: Hiện trên web, widget: boolean, default: false }
+          - { name: score, label: Điểm, widget: string, required: false, hint: 'Ví dụ: 8.5' }
+          - { name: comment, label: Nhận xét, widget: text, required: false }
+
+  # ------------------------------------------------------------------------
+  - name: journey
+    label: Hành trình học tập
+    label_singular: mốc
+    description: Các mốc đáng nhớ trong hành trình học tại UAH. Mốc mới nhất hiện trên cùng.
+    icon: timeline
+    folder: src/content/journey
+    create: true
+    delete: true
+    slug: '{{title}}'
+    extension: md
+    format: frontmatter
+    summary: '{{date | date(''DD.MM.YYYY'')}} — {{title}}'
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: Tiêu đề, widget: string, hint: 'Ví dụ: Ngày đầu nhập học UAH, Môn Hình hoạ 1, Đồ án đầu tiên' }
+      - { name: date, label: Ngày, widget: datetime, type: date, format: YYYY-MM-DD, default: '{{now}}' }
+      - *semester
+      - { name: body, label: Nội dung, widget: markdown, required: false, editor_components: [], hint: 'Vài câu kể lại mốc này.' }
+      - { name: image, label: Ảnh (tuỳ chọn), widget: image, required: false, choose_url: false }
+      - name: relatedWorks
+        label: Tác phẩm liên quan
+        widget: relation
+        collection: works
+        value_field: '{{slug}}'
+        search_fields: [title]
+        display_fields: [title]
+        multiple: true
+        required: false
+      - name: relatedProjects
+        label: Đồ án liên quan
+        widget: relation
+        collection: projects
+        value_field: '{{slug}}'
+        search_fields: [title]
+        display_fields: [title]
+        multiple: true
+        required: false
+
+  # ------------------------------------------------------------------------
+  - name: settings
+    label: Giới thiệu bản thân
+    description: Tên, ảnh đại diện, đoạn giới thiệu và mạng xã hội.
+    icon: person
+    files:
+      - name: profile
+        label: Thông tin cá nhân
+        file: src/content/settings/thong-tin.md
+        format: frontmatter
+        fields:
+          - { name: name, label: Tên hiển thị, widget: string, hint: 'Hiện rất lớn ở đầu trang chủ. Chữ cái đầu của từ cuối dùng làm favicon.' }
+          - { name: nickname, label: Biệt danh, widget: string, required: false }
+          - { name: tagline, label: Tagline, widget: string, required: false, hint: 'Ví dụ: Sinh viên Kiến trúc năm 1 · UAH · Vẽ – Dựng – Học' }
+          - { name: avatar, label: Ảnh đại diện, widget: image, required: false, choose_url: false, hint: 'Ảnh dọc tỉ lệ 4:5 là đẹp nhất. Web hiện đen trắng, rê chuột vào thì có màu.' }
+          - { name: body, label: Đoạn giới thiệu, widget: markdown, editor_components: [], hint: 'Đoạn đầu tiên hiện chữ lớn.' }
+          - { name: school, label: Trường, widget: string, required: false }
+          - { name: schoolYear, label: Năm học, widget: string, required: false, hint: 'Ví dụ: Năm 1 · Khoá 2026 – 2031' }
+          - { name: skills, label: Kỹ năng & công cụ, widget: list, required: false, hint: 'Ví dụ: Chì, Màu nước, SketchUp, AutoCAD' }
+          - { name: facebook, label: Facebook URL, widget: string, required: false, hint: 'Dạng https://facebook.com/ten-cua-ban — bỏ trống để ẩn nút.' }
+          - { name: instagram, label: Instagram URL, widget: string, required: false, hint: 'Dạng https://instagram.com/ten-cua-ban' }
+          - { name: email, label: Gmail, widget: string, required: false, hint: 'Chỉ ghi địa chỉ, ví dụ ten@gmail.com. Web tự tạo link mailto: và nút “Sao chép email”.' }
+          - { name: tiktok, label: TikTok URL, widget: string, required: false, hint: 'Dạng https://tiktok.com/@ten-cua-ban' }

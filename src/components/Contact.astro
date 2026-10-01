@@ -1,0 +1,171 @@
+---
+import SectionHead from './SectionHead.astro';
+import { ICONS, type IconName } from '../lib/icons';
+import { getSettings } from '../lib/data';
+
+const s = (await getSettings()).data;
+const links: { icon: IconName; label: string; href?: string; handle?: string }[] = [
+  { icon: 'facebook', label: 'Facebook', href: s.facebook },
+  { icon: 'instagram', label: 'Instagram', href: s.instagram },
+  { icon: 'gmail', label: 'Gmail', href: s.email ? `mailto:${s.email}` : undefined, handle: s.email },
+  { icon: 'tiktok', label: 'TikTok', href: s.tiktok },
+];
+const shown = links.filter((l) => l.href);
+---
+<section class="section" id="lien-he" aria-labelledby="lien-he-tieu-de">
+  <div class="wrap">
+    <SectionHead num="05" title="Liên hệ" id="lien-he" />
+
+    <p class="big">Cùng trò chuyện nhé</p>
+    <p class="sub">
+      Muốn trao đổi về một bản vẽ, rủ đi ký hoạ, hay chỉ đơn giản là chào nhau, cứ nhắn cho mình.
+    </p>
+
+    <ul class="socials">
+      {
+        shown.map((l) => (
+          <li>
+            <a
+              class="social"
+              href={l.href}
+              {...(l.icon !== 'gmail' ? { target: '_blank', rel: 'noopener me' } : {})}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path d={ICONS[l.icon]} fill="currentColor" />
+              </svg>
+              <span>{l.label}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      s.email && (
+        <div class="email-row">
+          <span class="email">{s.email}</span>
+          <button type="button" class="btn" data-copy={s.email}>
+            Sao chép email
+          </button>
+          <span class="toast label" role="status" aria-live="polite" data-toast />
+        </div>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .big {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(3.25rem, 1rem + 9vw, 10rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    font-weight: 400;
+    max-width: 12ch;
+  }
+  .sub {
+    margin: clamp(24px, 3vw, 36px) 0 0;
+    max-width: 48ch;
+    color: var(--muted);
+  }
+  .socials {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    list-style: none;
+    margin: clamp(40px, 5vw, 64px) 0 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+  }
+  .social {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 88px;
+    padding: 20px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    text-decoration: none;
+    font-size: 1.0625rem;
+    font-weight: 400;
+    transition:
+      background-color 0.25s,
+      color 0.25s;
+  }
+  .social svg {
+    color: var(--muted);
+    transition: color 0.25s;
+    flex: none;
+  }
+  .social:hover {
+    background: var(--surface);
+  }
+  .social:hover svg {
+    color: var(--text);
+  }
+  .email-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    margin-top: 28px;
+  }
+  .email {
+    font-family: var(--mono);
+    font-size: var(--fs-small);
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .toast {
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .toast.is-on {
+    opacity: 1;
+  }
+
+  @media (max-width: 860px) {
+    .socials {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 400px) {
+    .social {
+      min-height: 72px;
+      padding: 16px;
+      gap: 10px;
+    }
+  }
+</style>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-copy]');
+  const toast = document.querySelector<HTMLElement>('[data-toast]');
+  let timer = 0;
+  btn?.addEventListener('click', async () => {
+    const text = btn.dataset.copy || '';
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // Dự phòng cho trình duyệt cũ / không có quyền clipboard
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.append(ta);
+      ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    }
+    if (!toast) return;
+    toast.textContent = ok ? 'Đã sao chép' : 'Không sao chép được — hãy chọn và sao chép thủ công';
+    toast.classList.add('is-on');
+    clearTimeout(timer);
+    timer = window.setTimeout(() => toast.classList.remove('is-on'), 2400);
+  });
+</script>

@@ -1,0 +1,28 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Không tìm thấy trang">
+  <section class="wrap nf">
+    <p class="label fig">Lỗi 404</p>
+    <h1>Bản vẽ này không có trong hồ sơ.</h1>
+    <p>Đường dẫn có thể đã đổi hoặc tác phẩm đã bị xoá.</p>
+    <a class="btn" href="/">Về trang chủ</a>
+  </section>
+</Base>
+
+<style>
+  .nf {
+    min-height: 60vh;
+    display: grid;
+    align-content: center;
+    gap: 20px;
+    padding-block: 120px;
+  }
+  h1 {
+    font-size: var(--fs-h2);
+    max-width: 16ch;
+  }
+  .btn {
+    justify-self: start;
+  }
+</style>

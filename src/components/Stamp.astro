@@ -1,0 +1,27 @@
+---
+// Con dấu: chữ cái đầu tên trong khung vuông viền đôi
+interface Props {
+  name: string;
+  size?: number;
+}
+const { name, size = 30 } = Astro.props;
+const initial = (name.trim().split(/\s+/).pop() ?? 'A').charAt(0).toUpperCase();
+---
+<span class="stamp" style={`--s:${size}px`} aria-hidden="true">{initial}</span>
+
+<style>
+  .stamp {
+    display: inline-grid;
+    place-items: center;
+    width: var(--s);
+    height: var(--s);
+    border: 1px solid currentColor;
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: calc(var(--s) * 0.62);
+    line-height: 1;
+    padding-top: 0.06em;
+  }
+</style>

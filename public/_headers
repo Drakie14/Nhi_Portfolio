@@ -1,0 +1,9 @@
+# Không cho công cụ tìm kiếm lập chỉ mục trang quản trị
+/admin
+  X-Robots-Tag: noindex, nofollow
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+
+# Ảnh và file build có tên băm → lưu cache lâu
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

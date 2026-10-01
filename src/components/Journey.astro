@@ -1,0 +1,257 @@
+---
+import { render } from 'astro:content';
+import SectionHead from './SectionHead.astro';
+import Media from './Media.astro';
+import { formatDate, SEMESTERS, type Milestone, type Work, type Project } from '../lib/data';
+
+interface Props {
+  entries: Milestone[];
+  works: Work[];
+  projects: Project[];
+}
+const { entries, works, projects } = Astro.props;
+
+// Nhóm theo học kỳ, giữ thứ tự mới nhất ở trên
+const groups: { semester: string; items: Milestone[] }[] = [];
+for (const e of entries) {
+  const s = e.data.semester ?? 'Khác';
+  let g = groups.find((x) => x.semester === s);
+  if (!g) groups.push((g = { semester: s, items: [] }));
+  g.items.push(e);
+}
+groups.sort((a, b) => {
+  const ia = SEMESTERS.indexOf(a.semester);
+  const ib = SEMESTERS.indexOf(b.semester);
+  if (ia !== -1 && ib !== -1 && ia !== ib) return ib - ia;
+  return b.items[0].data.date.getTime() - a.items[0].data.date.getTime();
+});
+
+const workById = new Map(works.map((w) => [w.id, w]));
+const projectById = new Map(projects.map((p) => [p.id, p]));
+
+const rendered = new Map(
+  await Promise.all(entries.map(async (e) => [e.id, (await render(e)).Content] as const)),
+);
+---
+<section class="section" id="hanh-trinh" aria-labelledby="hanh-trinh-tieu-de">
+  <div class="wrap">
+    <SectionHead num="03" title="Hành trình tại UAH" id="hanh-trinh" note="Mới nhất ở trên" />
+
+    {entries.length === 0 && <p>Chưa có mốc nào. Mốc đầu tiên trong hành trình sẽ xuất hiện ở đây.</p>}
+
+    <div class="tl" data-timeline hidden={entries.length === 0}>
+      <div class="tl-rail" aria-hidden="true"><span class="tl-draw" data-timeline-line></span></div>
+
+      {
+        groups.map((g) => (
+          <section class="tl-group" aria-label={g.semester}>
+            <h3 class="tl-sem">
+              <span class="tl-node tl-node-sem" aria-hidden="true" />
+              {g.semester}
+            </h3>
+            <ol class="tl-list">
+              {g.items.map((e) => {
+                const Content = rendered.get(e.id)!;
+                const rel = [
+                  ...e.data.relatedWorks
+                    .map((id) => workById.get(id))
+                    .filter(Boolean)
+                    .map((w) => ({ href: `/tac-pham/${w!.id}/`, title: w!.data.title })),
+                  ...e.data.relatedProjects
+                    .map((id) => projectById.get(id))
+                    .filter(Boolean)
+                    .map((p) => ({ href: `/do-an/${p!.id}/`, title: p!.data.title })),
+                ];
+                return (
+                  <li class="tl-item">
+                    <span class="tl-node" aria-hidden="true" />
+                    <time class="tl-date label" datetime={e.data.date.toISOString().slice(0, 10)}>
+                      {formatDate(e.data.date)}
+                    </time>
+                    <div class="tl-body">
+                      <h4 class="tl-title">{e.data.title}</h4>
+                      <div class="tl-text prose">
+                        <Content />
+                      </div>
+                      {rel.length > 0 && (
+                        <p class="tl-rel">
+                          <span class="label">Liên quan</span>
+                          {rel.map((r) => (
+                            <a href={r.href}>{r.title}</a>
+                          ))}
+                        </p>
+                      )}
+                    </div>
+                    {e.data.image && (
+                      <div class="tl-img" data-reveal>
+                        <Media src={e.data.image} alt={e.data.title} key={e.id} sizes="200px" widths={[240, 400]} />
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .tl {
+    --rail-x: 168px;
+    position: relative;
+  }
+  .tl-rail {
+    position: absolute;
+    left: var(--rail-x);
+    top: 10px;
+    bottom: 0;
+    width: 1px;
+    background: var(--line);
+  }
+  .tl-draw {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform-origin: 50% 0;
+    transform: scaleY(var(--p, 1));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.js) .tl-draw {
+      transform: scaleY(var(--p, 0));
+    }
+  }
+
+  .tl-group + .tl-group {
+    margin-top: clamp(48px, 6vw, 80px);
+  }
+  .tl-sem {
+    position: relative;
+    padding-left: calc(var(--rail-x) + 40px);
+    font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem);
+    margin-bottom: clamp(24px, 3vw, 40px);
+  }
+  .tl-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: clamp(36px, 4vw, 56px);
+  }
+  .tl-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--rail-x) minmax(0, 1fr) auto;
+    column-gap: 40px;
+    align-items: start;
+  }
+  .tl-node {
+    position: absolute;
+    left: calc(var(--rail-x) - 4px);
+    top: 0.55em;
+    width: 9px;
+    height: 9px;
+    border: 1px solid var(--accent);
+    background: var(--bg);
+    border-radius: 50%;
+  }
+  .tl-node-sem {
+    left: calc(var(--rail-x) - 8px);
+    top: 0.42em;
+    width: 17px;
+    height: 17px;
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 5px var(--bg);
+  }
+  .tl-date {
+    padding-top: 0.35em;
+    color: var(--muted);
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .tl-body {
+    grid-column: 2;
+    max-width: 60ch;
+  }
+  .tl-title {
+    font-size: var(--fs-h3);
+    margin-bottom: 10px;
+  }
+  .tl-text {
+    color: var(--muted);
+  }
+  .tl-rel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: baseline;
+    margin: 14px 0 0;
+    font-size: var(--fs-small);
+  }
+  .tl-rel a {
+    color: var(--text);
+    text-decoration-color: var(--accent);
+  }
+  .tl-img {
+    grid-column: 3;
+    width: clamp(140px, 16vw, 220px);
+  }
+
+  @media (max-width: 760px) {
+    .tl {
+      --rail-x: 8px;
+    }
+    .tl-sem {
+      padding-left: 40px;
+    }
+    .tl-item {
+      grid-template-columns: 1fr;
+      padding-left: 40px;
+    }
+    .tl-date,
+    .tl-body,
+    .tl-img {
+      grid-column: 1;
+      grid-row: auto;
+    }
+    .tl-date {
+      padding-top: 0;
+      margin-bottom: 6px;
+    }
+    .tl-node {
+      top: 0.3em;
+    }
+    .tl-img {
+      margin-top: 16px;
+      width: min(240px, 70%);
+    }
+  }
+</style>
+
+<script>
+  // Đường timeline "vẽ dần" theo vị trí cuộn
+  const tl = document.querySelector<HTMLElement>('[data-timeline]');
+  const line = document.querySelector<HTMLElement>('[data-timeline-line]');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (tl && line && !reduce) {
+    let ticking = false;
+    const update = () => {
+      const r = tl.getBoundingClientRect();
+      const p = (window.innerHeight * 0.7 - r.top) / r.height;
+      line.style.setProperty('--p', Math.max(0, Math.min(1, p)).toFixed(4));
+      ticking = false;
+    };
+    update();
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+  }
+</script>

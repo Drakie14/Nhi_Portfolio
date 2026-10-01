@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.log
+.wrangler/
+
+# File gốc (PDF scan), không đưa lên repo public
+Ảnh/

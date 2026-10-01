@@ -1,0 +1,80 @@
+---
+import { Image } from 'astro:assets';
+import Placeholder from './Placeholder.astro';
+import { resolveImage, placeholderRatio } from '../lib/images';
+
+interface Props {
+  src?: string;
+  alt: string;
+  /** Khoá để chọn tỉ lệ placeholder ổn định */
+  key?: string;
+  ratio?: string;
+  sizes?: string;
+  widths?: number[];
+  eager?: boolean;
+  class?: string;
+  phText?: string;
+  /** Ép ảnh vào khung tỉ lệ `ratio` (cắt bằng object-fit) */
+  cover?: boolean;
+  /** Placeholder chỉ để trang trí */
+  decorative?: boolean;
+}
+
+const {
+  src,
+  alt,
+  key = alt,
+  ratio,
+  sizes = '(min-width: 1100px) 33vw, (min-width: 700px) 50vw, 100vw',
+  widths = [480, 768, 1080, 1440],
+  eager = false,
+  class: cls,
+  phText,
+  cover = false,
+  decorative = false,
+} = Astro.props;
+
+const img = resolveImage(src);
+const external = !img && src && /^https?:\/\//.test(src) ? src : undefined;
+const usable = img ? widths.filter((w) => w <= img.width) : [];
+if (img && usable.length === 0) usable.push(img.width);
+---
+{
+  img ? (
+    <Image
+      src={img}
+      alt={alt}
+      widths={usable}
+      sizes={sizes}
+      format="webp"
+      quality={80}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : 'auto'}
+      decoding="async"
+      class:list={['media', cls, { 'media-cover': cover }]}
+      style={cover && ratio ? `aspect-ratio:${ratio}` : undefined}
+    />
+  ) : external ? (
+    <img
+      src={external}
+      alt={alt}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+      class:list={['media', cls, { 'media-cover': cover }]}
+      style={cover && ratio ? `aspect-ratio:${ratio}` : undefined}
+    />
+  ) : (
+    <Placeholder ratio={ratio ?? placeholderRatio(key)} text={phText} class={cls} decorative={decorative} />
+  )
+}
+
+<style>
+  .media {
+    width: 100%;
+    height: auto;
+    background: var(--surface);
+  }
+  .media-cover {
+    object-fit: cover;
+  }
+</style>

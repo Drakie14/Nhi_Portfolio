@@ -1,0 +1,203 @@
+---
+import Base from '../../layouts/Base.astro';
+import Media from '../../components/Media.astro';
+import { getWorks, fig, formatDate } from '../../lib/data';
+
+export async function getStaticPaths() {
+  const works = await getWorks();
+  return works.map((w, i) => ({
+    params: { slug: w.id },
+    props: {
+      work: w,
+      index: i,
+      prev: works[i - 1] ?? works[works.length - 1],
+      next: works[i + 1] ?? works[0],
+      total: works.length,
+    },
+  }));
+}
+
+const { work, index, prev, next, total } = Astro.props;
+const d = work.data;
+const meta = [
+  ['Danh mục', d.category],
+  ['Chất liệu', d.medium],
+  ['Kích thước', d.size],
+  ['Học kỳ', d.semester],
+  ['Hoàn thành', formatDate(d.date)],
+].filter(([, v]) => v) as [string, string][];
+const alt = d.description ? `${d.title} — ${d.description}` : d.title;
+---
+<Base title={d.title} description={d.description ?? `${d.title} — ${d.category}`}>
+  <article class="work wrap">
+    <nav class="crumbs label" aria-label="Đường dẫn">
+      <a href="/#tac-pham">Tác phẩm</a>
+      <span aria-hidden="true">/</span>
+      <span>{fig(index + 1)}</span>
+    </nav>
+
+    <figure class="hero-img">
+      <Media
+        src={d.image}
+        alt={alt}
+        key={work.id}
+        eager
+        sizes="(min-width: 1440px) 1330px, 100vw"
+        widths={[768, 1080, 1440, 1920, 2560]}
+      />
+    </figure>
+
+    <header class="head">
+      <div>
+        <p class="label fig">{fig(index + 1)} / {String(total).padStart(2, '0')}</p>
+        <h1>{d.title}</h1>
+      </div>
+      <div class="info">
+        <dl>
+          {meta.map(([k, v]) => (
+            <div>
+              <dt class="label">{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {d.description && <p class="desc">{d.description}</p>}
+      </div>
+    </header>
+
+    {
+      d.gallery.length > 0 && (
+        <section class="gallery" aria-label="Ảnh phụ">
+          {d.gallery.map((src, k) => (
+            <figure data-reveal>
+              <Media src={src} alt={`${d.title} — ảnh ${k + 2}`} key={`${work.id}-${k}`} sizes="(min-width: 900px) 50vw, 100vw" />
+            </figure>
+          ))}
+        </section>
+      )
+    }
+
+    <nav class="pager" aria-label="Tác phẩm khác">
+      <a href={`/tac-pham/${prev.id}/`} class="pg pg-prev">
+        <span class="label">Tác phẩm trước</span>
+        <span class="pg-title">{prev.data.title}</span>
+      </a>
+      <a href={`/tac-pham/${next.id}/`} class="pg pg-next">
+        <span class="label">Tác phẩm sau</span>
+        <span class="pg-title">{next.data.title}</span>
+      </a>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .work {
+    padding-top: 32px;
+  }
+  .crumbs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .crumbs a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .crumbs a:hover {
+    text-decoration: underline;
+  }
+  .hero-img {
+    margin: 0;
+    display: grid;
+    place-items: center;
+  }
+  .hero-img > :global(img) {
+    width: auto;
+    max-height: calc(100svh - var(--nav-h) - 120px);
+    max-width: 100%;
+  }
+  .hero-img > :global(.ph) {
+    max-width: min(100%, 560px);
+  }
+  .head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px clamp(32px, 6vw, 96px);
+    margin-top: clamp(32px, 5vw, 64px);
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+  }
+  h1 {
+    margin-top: 14px;
+    font-size: clamp(2.5rem, 1.5rem + 4vw, 4.75rem);
+  }
+  dl {
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  dl div {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 16px;
+    padding-block: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  dt {
+    padding-top: 0.25em;
+  }
+  dd {
+    margin: 0;
+  }
+  .desc {
+    margin-top: 24px;
+    color: var(--muted);
+    max-width: 56ch;
+  }
+  .gallery {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(14px, 2vw, 28px);
+    margin-top: clamp(56px, 8vw, 112px);
+    align-items: start;
+  }
+  .gallery figure {
+    margin: 0;
+  }
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: clamp(64px, 9vw, 128px);
+    border-top: 1px solid var(--line);
+  }
+  .pg {
+    display: grid;
+    gap: 8px;
+    padding: 28px 24px 28px 0;
+    text-decoration: none;
+  }
+  .pg-next {
+    text-align: right;
+    padding: 28px 0 28px 24px;
+    border-left: 1px solid var(--line);
+  }
+  .pg-title {
+    font-family: var(--serif);
+    font-size: var(--fs-h3);
+    line-height: 1.15;
+  }
+  .pg:hover .pg-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+  @media (max-width: 760px) {
+    .head {
+      grid-template-columns: 1fr;
+    }
+    .gallery {
+      grid-template-columns: 1fr;
+    }
+    dl div {
+      grid-template-columns: 110px 1fr;
+    }
+  }
+</style>

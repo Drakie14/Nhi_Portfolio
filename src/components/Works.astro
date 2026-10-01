@@ -1,0 +1,799 @@
+---
+import { getImage } from 'astro:assets';
+import SectionHead from './SectionHead.astro';
+import Media from './Media.astro';
+import Placeholder from './Placeholder.astro';
+import { fig, type Work } from '../lib/data';
+import { resolveImage, ratioOf } from '../lib/images';
+import { CATEGORIES } from '../content.config';
+
+interface Props {
+  works: Work[];
+}
+const { works } = Astro.props;
+
+// Dữ liệu cho lightbox và ảnh xem trước ở chế độ danh sách
+const items = await Promise.all(
+  works.map(async (w, i) => {
+    const img = resolveImage(w.data.image);
+    let large: { src: string; srcset: string } | null = null;
+    let thumb: string | null = null;
+    if (img) {
+      const widths = [768, 1280, 1920, 2560].filter((x) => x <= img.width);
+      if (!widths.length) widths.push(img.width);
+      const big = await getImage({ src: img, widths, format: 'webp', quality: 82 });
+      large = { src: big.src, srcset: big.srcSet.attribute };
+      const small = await getImage({ src: img, width: Math.min(480, img.width), format: 'webp' });
+      thumb = small.src;
+    }
+    return {
+      i,
+      id: w.id,
+      fig: fig(i + 1),
+      title: w.data.title,
+      category: w.data.category,
+      medium: w.data.medium ?? '',
+      size: w.data.size ?? '',
+      semester: w.data.semester ?? '',
+      year: w.data.date.getUTCFullYear(),
+      alt: w.data.description ? `${w.data.title} — ${w.data.description}` : w.data.title,
+      href: `/tac-pham/${w.id}/`,
+      ratio: ratioOf(img, w.id),
+      large,
+      thumb,
+    };
+  }),
+);
+
+const counts = new Map<string, number>();
+for (const w of works) counts.set(w.data.category, (counts.get(w.data.category) ?? 0) + 1);
+const cats = CATEGORIES.filter((c) => counts.has(c));
+---
+<section class="section works" id="tac-pham" aria-labelledby="tac-pham-tieu-de" data-works>
+  <div class="wrap">
+    <SectionHead num="01" title="Tác phẩm" id="tac-pham" note={`${works.length} tác phẩm`} />
+
+    {
+      works.length === 0 ? (
+        <p class="empty">
+          Chưa có tác phẩm nào. Vào <a href="/admin/">Chế độ kiến trúc sư</a> để thêm tác phẩm đầu tiên.
+        </p>
+      ) : (
+        <>
+          <div class="tools">
+            <div class="chips" role="group" aria-label="Lọc theo danh mục">
+              <button type="button" class="chip" aria-pressed="true" data-filter="*">
+                Tất cả <span class="chip-n">{works.length}</span>
+              </button>
+              {cats.map((c) => (
+                <button type="button" class="chip" aria-pressed="false" data-filter={c}>
+                  {c} <span class="chip-n">{counts.get(c)}</span>
+                </button>
+              ))}
+            </div>
+
+            <div class="views" role="group" aria-label="Chế độ xem">
+              <button type="button" class="view-btn" aria-pressed="true" data-view="grid">
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M.5.5h5v7h-5zM8.5.5h5v4h-5zM.5 10.5h5v3h-5zM8.5 7.5h5v6h-5z" fill="none" stroke="currentColor"/></svg>
+                Lưới
+              </button>
+              <button type="button" class="view-btn" aria-pressed="false" data-view="list">
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 2.5h14M0 7h14M0 11.5h14" stroke="currentColor"/></svg>
+                Danh sách
+              </button>
+            </div>
+          </div>
+
+          <p class="visually-hidden" aria-live="polite" data-status />
+
+          {/* ---------- LƯỚI (masonry) ---------- */}
+          <ul class="grid" data-panel="grid">
+            {works.map((w, i) => (
+              <li class="g-item" data-cat={w.data.category} data-reveal>
+                <a class="g-open" href={items[i].href} data-open={i}>
+                  <span class="g-media">
+                    <Media src={w.data.image} alt={items[i].alt} key={w.id} />
+                  </span>
+                  <span class="g-over" aria-hidden="true">
+                    <span class="label fig">{items[i].fig}</span>
+                    <span class="g-title">{w.data.title}</span>
+                    {w.data.medium && <span class="g-medium">{w.data.medium}</span>}
+                  </span>
+                  <span class="visually-hidden">Mở ảnh lớn: {w.data.title}</span>
+                </a>
+                <p class="g-cap">
+                  <span class="label fig">{items[i].fig}</span>
+                  <span class="g-cap-title">{w.data.title}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          {/* ---------- DANH SÁCH (index) ---------- */}
+          <div class="list" data-panel="list" hidden>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" class="c-thumb"><span class="visually-hidden">Ảnh</span></th>
+                  <th scope="col" class="c-year label">Năm</th>
+                  <th scope="col" class="c-name label">Tên</th>
+                  <th scope="col" class="c-cat label">Danh mục</th>
+                  <th scope="col" class="c-med label">Chất liệu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {works.map((w, i) => (
+                  <tr class="row" data-cat={w.data.category} data-row={i}>
+                    <td class="c-thumb">
+                      <span class="thumb">
+                        <Media src={w.data.image} alt="" key={w.id} ratio="1/1" cover sizes="48px" widths={[96]} decorative />
+                      </span>
+                    </td>
+                    <td class="c-year">{items[i].year}</td>
+                    <td class="c-name">
+                      <a href={items[i].href} data-open={i}>{w.data.title}</a>
+                      <span class="row-sub label">{w.data.category} · {items[i].year}</span>
+                    </td>
+                    <td class="c-cat">{w.data.category}</td>
+                    <td class="c-med">{w.data.medium}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )
+    }
+  </div>
+
+  <!-- Ảnh xem trước bám theo con trỏ (chế độ danh sách, desktop) -->
+  <div class="preview" aria-hidden="true" data-preview>
+    <img alt="" data-preview-img hidden />
+    <div class="preview-ph" data-preview-ph hidden><Placeholder ratio="4/5" decorative /></div>
+  </div>
+
+  <!-- Lightbox toàn màn hình -->
+  <dialog class="lb" aria-label="Xem tác phẩm" data-lb>
+    <div class="lb-top">
+      <span class="label" data-lb-count></span>
+      <button type="button" class="lb-close label" data-lb-close>Đóng <span aria-hidden="true">✕</span></button>
+    </div>
+    <div class="lb-stage" data-lb-stage>
+      <button type="button" class="lb-nav lb-prev" data-lb-prev aria-label="Tác phẩm trước">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M17 5 8 14l9 9" fill="none" stroke="currentColor" stroke-width="1.25"/></svg>
+      </button>
+      <figure class="lb-fig">
+        <img class="lb-img" alt="" data-lb-img hidden />
+        <div class="lb-ph" data-lb-ph hidden><Placeholder ratio="4/5" /></div>
+      </figure>
+      <button type="button" class="lb-nav lb-next" data-lb-next aria-label="Tác phẩm sau">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="m11 5 9 9-9 9" fill="none" stroke="currentColor" stroke-width="1.25"/></svg>
+      </button>
+    </div>
+    <div class="lb-cap">
+      <p class="lb-meta" data-lb-cap></p>
+      <a class="lb-more label" href="#" data-lb-link>Xem trang tác phẩm</a>
+    </div>
+  </dialog>
+
+  <script type="application/json" data-works-json set:html={JSON.stringify(items).replace(/</g, '\\u003c')} />
+</section>
+
+<style>
+  .empty a {
+    color: var(--accent);
+  }
+
+  /* ---------- Thanh công cụ ---------- */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px 32px;
+    margin-bottom: clamp(28px, 4vw, 44px);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip,
+  .view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: var(--fs-small);
+    font-weight: 400;
+    color: var(--muted);
+    transition:
+      color 0.2s,
+      border-color 0.2s,
+      background-color 0.2s;
+  }
+  .chip:hover,
+  .view-btn:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+  .chip[aria-pressed='true'] {
+    color: var(--bg);
+    background: var(--text);
+    border-color: var(--text);
+  }
+  .chip-n {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+  }
+
+  .views {
+    display: inline-flex;
+    border: 1px solid var(--line);
+  }
+  .view-btn {
+    border: 0;
+    border-radius: 0;
+    font-family: var(--mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .view-btn + .view-btn {
+    border-left: 1px solid var(--line);
+  }
+  .view-btn[aria-pressed='true'] {
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  /* ---------- Lưới masonry ---------- */
+  .grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    columns: 3;
+    column-gap: clamp(14px, 2vw, 28px);
+  }
+  .g-item {
+    break-inside: avoid;
+    margin-bottom: clamp(14px, 2vw, 28px);
+  }
+  .g-item[hidden] {
+    display: none;
+  }
+  .g-open {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    text-decoration: none;
+  }
+  .g-media :global(img) {
+    filter: brightness(0.78) saturate(0.95);
+    transition: filter 0.5s var(--ease);
+  }
+  .g-over {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 48px 18px 16px;
+    background: linear-gradient(transparent, rgb(13 13 15 / 0.92));
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 0.35s var(--ease),
+      transform 0.35s var(--ease);
+  }
+  .g-title {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+  .g-medium {
+    font-size: var(--fs-small);
+    color: var(--text);
+    opacity: 0.8;
+  }
+  .g-open:hover .g-media :global(img),
+  .g-open:focus-visible .g-media :global(img) {
+    filter: none;
+  }
+  .g-open:hover .g-over,
+  .g-open:focus-visible .g-over {
+    opacity: 1;
+    transform: none;
+  }
+  .g-cap {
+    display: none;
+    gap: 10px;
+    align-items: baseline;
+    margin: 10px 0 0;
+    font-size: var(--fs-small);
+  }
+
+  /* Thiết bị cảm ứng: không có hover → luôn hiện chú thích bên dưới */
+  @media (hover: none) {
+    .g-media :global(img) {
+      filter: none;
+    }
+    .g-over {
+      display: none;
+    }
+    .g-cap {
+      display: flex;
+    }
+  }
+
+  @media (max-width: 1000px) {
+    .grid {
+      columns: 2;
+    }
+  }
+  @media (max-width: 479px) {
+    .grid {
+      columns: 1;
+    }
+  }
+  @media (min-width: 1600px) {
+    .grid {
+      columns: 4;
+    }
+  }
+
+  /* ---------- Danh sách ---------- */
+  .list table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .list th {
+    text-align: left;
+    font-weight: 400;
+    padding: 0 16px 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .list td {
+    padding: 18px 16px 18px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: baseline;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  .row {
+    transition: background-color 0.2s;
+  }
+  .row[hidden] {
+    display: none;
+  }
+  .row:hover td {
+    color: var(--text);
+  }
+  .c-year {
+    width: 7ch;
+    font-family: var(--mono);
+    font-size: var(--fs-small);
+  }
+  .c-name a {
+    font-family: var(--serif);
+    font-size: clamp(1.25rem, 1rem + 0.8vw, 1.75rem);
+    line-height: 1.2;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .row:hover .c-name a {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+  .c-name a::after {
+    /* cả dòng bấm được */
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .row {
+    position: relative;
+  }
+  .c-cat {
+    width: 18%;
+  }
+  .c-med {
+    width: 28%;
+    font-size: var(--fs-small);
+  }
+  .c-thumb,
+  .row-sub {
+    display: none;
+  }
+
+  @media (max-width: 720px) {
+    .list thead {
+      display: none;
+    }
+    .c-year,
+    .c-cat,
+    .c-med {
+      display: none;
+    }
+    .c-thumb {
+      display: table-cell;
+      width: 64px;
+      vertical-align: middle;
+    }
+    .thumb {
+      display: block;
+      width: 48px;
+    }
+    .thumb :global(.ph-text) {
+      display: none;
+    }
+    .list td {
+      padding-block: 14px;
+    }
+    .c-name {
+      vertical-align: middle;
+    }
+    .row-sub {
+      display: block;
+      margin-top: 4px;
+    }
+  }
+
+  /* ---------- Ảnh xem trước bám con trỏ ---------- */
+  .preview {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 90;
+    width: 260px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    will-change: transform;
+  }
+  .preview.is-on {
+    opacity: 1;
+  }
+  .preview img {
+    width: 100%;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+  }
+  @media (hover: none), (max-width: 720px) {
+    .preview {
+      display: none;
+    }
+  }
+
+  /* ---------- Lightbox ---------- */
+  .lb {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgb(13 13 15 / 0.97);
+    color: var(--text);
+    overflow: hidden;
+  }
+  .lb[open] {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+  .lb::backdrop {
+    background: rgb(13 13 15 / 0.9);
+  }
+  .lb-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px var(--gutter);
+  }
+  .lb-close {
+    min-height: 44px;
+    padding-inline: 8px;
+    margin-right: -8px;
+    color: var(--text);
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .lb-stage {
+    position: relative;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding-inline: clamp(4px, 2vw, 24px);
+    touch-action: pan-y;
+    overflow: hidden;
+  }
+  .lb-fig {
+    margin: 0;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+  }
+  .lb-img {
+    max-width: 100%;
+    max-height: calc(100dvh - 170px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .lb-ph {
+    width: min(100%, calc((100dvh - 200px) * 0.8));
+  }
+  .lb-nav {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  .lb-nav:hover {
+    color: var(--text);
+  }
+  .lb-cap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px 24px;
+    padding: 18px var(--gutter) 22px;
+    border-top: 1px solid var(--line);
+  }
+  .lb-meta {
+    margin: 0;
+    font-size: var(--fs-small);
+    color: var(--muted);
+  }
+  .lb-meta :global(.fig) {
+    font-family: var(--mono);
+    letter-spacing: 0.14em;
+    font-size: var(--fs-label);
+  }
+  .lb-meta :global(.t) {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    color: var(--text);
+  }
+  .lb-more {
+    color: var(--text);
+    padding-block: 6px;
+  }
+
+  @media (max-width: 640px) {
+    .lb-stage {
+      grid-template-columns: 1fr;
+    }
+    .lb-nav {
+      position: absolute;
+      bottom: 0;
+      z-index: 1;
+      background: rgb(13 13 15 / 0.6);
+    }
+    .lb-prev {
+      left: 8px;
+    }
+    .lb-next {
+      right: 8px;
+    }
+  }
+</style>
+
+<script>
+  type Item = {
+    i: number;
+    id: string;
+    fig: string;
+    title: string;
+    category: string;
+    medium: string;
+    size: string;
+    semester: string;
+    year: number;
+    alt: string;
+    href: string;
+    ratio: string;
+    large: { src: string; srcset: string } | null;
+    thumb: string | null;
+  };
+
+  const root = document.querySelector<HTMLElement>('[data-works]');
+  const json = root?.querySelector('[data-works-json]');
+
+  if (root && json) {
+    const items: Item[] = JSON.parse(json.textContent || '[]');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------- Bộ lọc ---------- */
+    const chips = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const gridItems = [...root.querySelectorAll<HTMLElement>('.g-item')];
+    const rows = [...root.querySelectorAll<HTMLElement>('.row')];
+    const status = root.querySelector<HTMLElement>('[data-status]');
+    let visible = items.map((it) => it.i);
+
+    const applyFilter = (cat: string) => {
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.filter === cat)));
+      const show = (el: HTMLElement) => cat === '*' || el.dataset.cat === cat;
+      gridItems.forEach((el) => {
+        el.hidden = !show(el);
+        if (!el.hidden) el.classList.add('is-in');
+      });
+      rows.forEach((el) => (el.hidden = !show(el)));
+      visible = items.filter((it) => cat === '*' || it.category === cat).map((it) => it.i);
+      if (status) status.textContent = `Đang hiện ${visible.length} tác phẩm`;
+    };
+    chips.forEach((c) => c.addEventListener('click', () => applyFilter(c.dataset.filter || '*')));
+
+    /* ---------- Chế độ xem ---------- */
+    const viewBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-view]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('[data-panel]')];
+    const setView = (v: string) => {
+      viewBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+      panels.forEach((p) => (p.hidden = p.dataset.panel !== v));
+      try {
+        localStorage.setItem('works-view', v);
+      } catch {}
+    };
+    viewBtns.forEach((b) => b.addEventListener('click', () => setView(b.dataset.view || 'grid')));
+    try {
+      const saved = localStorage.getItem('works-view');
+      if (saved === 'list') setView('list');
+    } catch {}
+
+    /* ---------- Xem trước bám theo con trỏ ---------- */
+    const preview = root.querySelector<HTMLElement>('[data-preview]');
+    const pImg = root.querySelector<HTMLImageElement>('[data-preview-img]');
+    const pPh = root.querySelector<HTMLElement>('[data-preview-ph]');
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    if (preview && pImg && pPh) {
+      let x = 0;
+      let y = 0;
+      let raf = 0;
+      const place = () => {
+        const w = preview.offsetWidth;
+        const h = preview.offsetHeight;
+        const left = Math.min(x + 28, window.innerWidth - w - 16);
+        const top = Math.max(16, Math.min(y - h / 2, window.innerHeight - h - 16));
+        preview.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        raf = 0;
+      };
+      rows.forEach((row) => {
+        const it = items[Number(row.dataset.row)];
+        row.addEventListener('pointerenter', () => {
+          if (!fine.matches) return;
+          if (it.thumb) {
+            pImg.src = it.thumb;
+            pImg.style.aspectRatio = it.ratio;
+            pImg.hidden = false;
+            pPh.hidden = true;
+          } else {
+            pImg.hidden = true;
+            pPh.hidden = false;
+          }
+          preview.classList.add('is-on');
+        });
+        row.addEventListener('pointerleave', () => preview.classList.remove('is-on'));
+        row.addEventListener('pointermove', (e) => {
+          x = e.clientX;
+          y = e.clientY;
+          if (!raf) raf = requestAnimationFrame(place);
+        });
+      });
+    }
+
+    /* ---------- Lightbox ---------- */
+    const lb = root.querySelector<HTMLDialogElement>('[data-lb]')!;
+    const img = lb.querySelector<HTMLImageElement>('[data-lb-img]')!;
+    const ph = lb.querySelector<HTMLElement>('[data-lb-ph]')!;
+    const cap = lb.querySelector<HTMLElement>('[data-lb-cap]')!;
+    const count = lb.querySelector<HTMLElement>('[data-lb-count]')!;
+    const link = lb.querySelector<HTMLAnchorElement>('[data-lb-link]')!;
+    const stage = lb.querySelector<HTMLElement>('[data-lb-stage]')!;
+    let pos = 0;
+    let opener: HTMLElement | null = null;
+
+    const esc = (s: string) =>
+      s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    const show = (p: number) => {
+      pos = (p + visible.length) % visible.length;
+      const it = items[visible[pos]];
+      if (it.large) {
+        img.hidden = false;
+        ph.hidden = true;
+        img.removeAttribute('src');
+        img.srcset = it.large.srcset;
+        img.sizes = '100vw';
+        img.src = it.large.src;
+        img.alt = it.alt;
+      } else {
+        img.hidden = true;
+        ph.hidden = false;
+        (ph.firstElementChild as HTMLElement | null)?.style.setProperty('aspect-ratio', it.ratio);
+      }
+      const parts = [
+        `<span class="fig">${esc(it.fig)}</span>`,
+        `<span class="t">${esc(it.title)}</span>`,
+        it.medium,
+        it.size,
+        it.semester,
+      ].filter(Boolean);
+      cap.innerHTML = parts.map((x, k) => (k < 2 ? x : esc(x))).join(' · ');
+      count.textContent = `${String(pos + 1).padStart(2, '0')} / ${String(visible.length).padStart(2, '0')}`;
+      link.href = it.href;
+      // tải trước ảnh kế tiếp
+      const next = items[visible[(pos + 1) % visible.length]];
+      if (next?.large) {
+        const pre = new Image();
+        pre.sizes = '100vw';
+        pre.srcset = next.large.srcset;
+      }
+    };
+
+    const open = (index: number, from: HTMLElement) => {
+      const p = visible.indexOf(index);
+      if (p < 0) return;
+      opener = from;
+      show(p);
+      lb.showModal();
+      document.documentElement.style.overflow = 'hidden';
+      lb.querySelector<HTMLButtonElement>('[data-lb-close]')?.focus();
+    };
+
+    lb.addEventListener('close', () => {
+      document.documentElement.style.overflow = '';
+      opener?.focus();
+    });
+
+    root.querySelectorAll<HTMLElement>('[data-open]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        open(Number(el.dataset.open), el);
+      });
+    });
+
+    lb.querySelector('[data-lb-close]')?.addEventListener('click', () => lb.close());
+    lb.querySelector('[data-lb-prev]')?.addEventListener('click', () => show(pos - 1));
+    lb.querySelector('[data-lb-next]')?.addEventListener('click', () => show(pos + 1));
+    lb.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') show(pos - 1);
+      if (e.key === 'ArrowRight') show(pos + 1);
+    });
+    // bấm vào nền tối quanh ảnh để đóng
+    stage.addEventListener('click', (e) => {
+      if (e.target === stage || (e.target as HTMLElement).classList.contains('lb-fig')) lb.close();
+    });
+
+    // Vuốt trên mobile
+    let sx = 0;
+    let sy = 0;
+    stage.addEventListener('pointerdown', (e) => {
+      sx = e.clientX;
+      sy = e.clientY;
+    });
+    stage.addEventListener('pointerup', (e) => {
+      if (e.pointerType === 'mouse') return;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) show(dx < 0 ? pos + 1 : pos - 1);
+    });
+
+    if (!reduce) {
+      img.addEventListener('load', () => {
+        img.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'ease-out' });
+      });
+    }
+  }
+</script>
