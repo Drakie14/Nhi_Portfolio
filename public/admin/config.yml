@@ -17,8 +17,8 @@ backend:
     deleteMedia: 'Xoá ảnh “{{path}}”'
 
 app_title: Chế độ kiến trúc sư
-site_url: https://ten-du-an.pages.dev          # ĐỔI: địa chỉ website của bạn
-display_url: https://ten-du-an.pages.dev
+site_url: https://nhi-portfolio-cib.pages.dev          # ĐỔI: địa chỉ website của bạn
+display_url: https://nhi-portfolio-cib.pages.dev
 
 # Ảnh được lưu thẳng vào repo, trong thư mục mà Astro tự nén & tạo srcset khi build
 media_folder: src/assets/uploads

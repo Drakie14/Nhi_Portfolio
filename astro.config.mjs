@@ -6,7 +6,7 @@ import sitemap from '@astrojs/sitemap';
 // (ví dụ https://nhi-portfolio.pages.dev hoặc tên miền riêng).
 // Dùng cho sitemap, thẻ canonical và ảnh chia sẻ (Open Graph).
 export default defineConfig({
-  site: 'https://ten-du-an.pages.dev',
+  site: 'https://nhi-portfolio-cib.pages.dev',
   output: 'static',
   trailingSlash: 'ignore',
   integrations: [sitemap()],
